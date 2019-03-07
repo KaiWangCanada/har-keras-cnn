@@ -1,5 +1,5 @@
 # Compatibility layer between Python 2 and Python 3
-from __future__ import print_function
+
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -209,19 +209,19 @@ print("\n--- Load, inspect and transform data ---\n")
 df = read_data('Data/WISDM_ar_v1.1_raw.txt')
 
 # Describe the data
-show_basic_dataframe_info(df, 20)
-
-df['activity'].value_counts().plot(kind='bar',
-                                   title='Training Examples by Activity Type')
-plt.show()
-
-df['user-id'].value_counts().plot(kind='bar',
-                                  title='Training Examples by User')
-plt.show()
-
-for activity in np.unique(df["activity"]):
-    subset = df[df["activity"] == activity][:180]
-    plot_activity(activity, subset)
+# show_basic_dataframe_info(df, 20)
+#
+# df['activity'].value_counts().plot(kind='bar',
+#                                    title='Training Examples by Activity Type')
+# plt.show()
+#
+# df['user-id'].value_counts().plot(kind='bar',
+#                                   title='Training Examples by User')
+# plt.show()
+#
+# for activity in np.unique(df["activity"]):
+#     subset = df[df["activity"] == activity][:180]
+#     plot_activity(activity, subset)
 
 # Define column name of the label vector
 LABEL = "ActivityEncoded"
@@ -258,7 +258,7 @@ print("\n--- Reshape data to be accepted by Keras ---\n")
 
 # Inspect x data
 print('x_train shape: ', x_train.shape)
-# Displays (20869, 40, 3)
+# Displays (20869, 80, 3)
 print(x_train.shape[0], 'training samples')
 # Displays 20869 train samples
 
@@ -273,16 +273,16 @@ print(list(le.classes_))
 
 # Set input_shape / reshape for Keras
 # Remark: acceleration data is concatenated in one array in order to feed
-# it properly into coreml later, the preferred matrix of shape [40,3]
+# it properly into coreml later, the preferred matrix of shape [80,3]
 # cannot be read in with the current version of coreml (see also reshape
 # layer as the first layer in the keras model)
 input_shape = (num_time_periods*num_sensors)
 x_train = x_train.reshape(x_train.shape[0], input_shape)
 
 print('x_train shape:', x_train.shape)
-# x_train shape: (20869, 120)
+# x_train shape: (20869, 240)
 print('input_shape:', input_shape)
-# input_shape: (120)
+# input_shape: (240)
 
 # Convert type for Keras otherwise Keras cannot process the data
 x_train = x_train.astype("float32")
@@ -293,7 +293,7 @@ y_train = y_train.astype("float32")
 # One-hot encoding of y_train labels (only execute once!)
 y_train = np_utils.to_categorical(y_train, num_classes)
 print('New y_train shape: ', y_train.shape)
-# (4173, 6)
+# (20868, 6)
 
 # %%
 
@@ -333,7 +333,7 @@ model_m.compile(loss='categorical_crossentropy',
 
 # Hyper-parameters
 BATCH_SIZE = 400
-EPOCHS = 50
+EPOCHS = 3
 
 # Enable validation to use ModelCheckpoint and EarlyStopping callbacks.
 history = model_m.fit(x_train,
