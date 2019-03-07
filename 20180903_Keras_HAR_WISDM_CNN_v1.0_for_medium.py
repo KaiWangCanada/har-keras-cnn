@@ -7,7 +7,7 @@ import seaborn as sns
 from scipy import stats
 
 from sklearn import metrics
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn import preprocessing
 
 import keras
@@ -402,6 +402,10 @@ max_y_test = np.argmax(y_test, axis=1)
 show_confusion_matrix(max_y_test, max_y_pred_test)
 
 # %%
+
+
+print('confusion matrix:')
+print(confusion_matrix(max_y_test, max_y_pred_test))
 
 print("\n--- Classification report for test data ---\n")
 
