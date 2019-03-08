@@ -172,7 +172,7 @@ print("\n--- Fit the model ---\n")
 # training stops early
 callbacks_list = [
     keras.callbacks.ModelCheckpoint(
-        filepath='best_model.{epoch:02d}-{val_loss:.2f}.h5',
+        filepath='models/best_model.{epoch:02d}-{val_loss:.2f}.h5',
         monitor='val_loss', save_best_only=True),
     keras.callbacks.EarlyStopping(monitor='acc', patience=3)
 ]

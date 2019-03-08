@@ -18,16 +18,12 @@ from keras import optimizers
 
 def read_data(file_path):
     df = pd.read_csv(file_path, index_col=[0])
-    # df['f1d_binary'] = np.where(df['f1d_label'] > 0, 1, 0)
 
     df_stock = df[df['minor'] == 'VMC'][['minor', 'Date', '0', '1', '2', 'f1d_label']]
     return df_stock
 
 
 def create_segments_and_labels(df, time_steps, step, label_name):
-
-    # n features
-    N_FEATURES = 3
     # Number of steps to advance in each iteration
     segments = []
     labels = []
@@ -53,27 +49,12 @@ def create_segments_and_labels(df, time_steps, step, label_name):
     return reshaped_segments, labels
 
 
-def show_confusion_matrix(validations, predictions, labels):
-
-    matrix = metrics.confusion_matrix(validations, predictions)
-    plt.figure(figsize=(6, 4))
-    sns.heatmap(matrix,
-                cmap="coolwarm",
-                linecolor='white',
-                linewidths=1,
-                xticklabels=labels,
-                yticklabels=labels,
-                annot=True,
-                fmt="d")
-    plt.title("Confusion Matrix")
-    plt.ylabel("True Label")
-    plt.xlabel("Predicted Label")
-    plt.show()
-
-
 # ------- THE PROGRAM TO LOAD DATA AND TRAIN THE MODEL -------
 
 '''params'''
+# n features
+N_FEATURES = 3
+
 # The number of steps within one time segment
 TIME_PERIODS = 60
 # The steps to take from one segment to the next; if this value is equal to
@@ -86,7 +67,7 @@ drop_out = 0.5
 
 # Hyper-parameters
 BATCH_SIZE = 400
-EPOCHS = 60
+EPOCHS = 600
 
 print("\n--- Load, inspect and transform data ---\n")
 
@@ -144,28 +125,23 @@ print('input_shape:', input_shape)
 x_train = x_train.astype("float32")
 y_train = y_train.astype("float32")
 
-# %%
-
-# One-hot encoding of y_train labels (only execute once!)
-# y_train = np_utils.to_categorical(y_train, num_classes)
-# print('New y_train shape: ', y_train.shape)
-# (20868, 6)
-
 print("\n--- Create neural network model ---\n")
 
 # 1D CNN neural network
 model_m = Sequential()
-model_m.add(Reshape((TIME_PERIODS, num_features), input_shape=(input_shape,)))
-model_m.add(Conv1D(filter_depths[0], filter_height, activation='relu', input_shape=(TIME_PERIODS, num_features)))
-model_m.add(Conv1D(filter_depths[1], filter_height, activation='relu'))
+model_m.add(Reshape((TIME_PERIODS, num_features), input_shape=(input_shape,)))  # 0
+model_m.add(Conv1D(filter_depths[0], filter_height, activation='tanh', input_shape=(TIME_PERIODS, num_features)))  # 1
+model_m.add(Conv1D(filter_depths[1], filter_height, activation='tanh'))  # 2
 # model_m.add(MaxPooling1D(3))
-model_m.add(AveragePooling1D(3))
-model_m.add(Conv1D(filter_depths[2], filter_height, activation='relu'))
-model_m.add(Conv1D(filter_depths[3], filter_height, activation='relu'))
-model_m.add(GlobalAveragePooling1D())
-model_m.add(Dropout(drop_out))
-model_m.add(Dense(num_classes, activation='relu'))
+model_m.add(AveragePooling1D(N_FEATURES))  # 3
+model_m.add(Conv1D(filter_depths[2], filter_height, activation='tanh'))  # 4
+model_m.add(Conv1D(filter_depths[3], filter_height, activation='tanh'))  # 5
+model_m.add(GlobalAveragePooling1D())  # 6
+model_m.add(Dropout(drop_out))  # 7
+model_m.add(Dense(1))  # 8
 print(model_m.summary())
+
+model_m.compile(optimizer=optimizers.Adam(lr=1e-04), loss='mean_squared_error')
 
 print("\n--- Fit the model ---\n")
 
@@ -174,19 +150,10 @@ print("\n--- Fit the model ---\n")
 # training stops early
 callbacks_list = [
     keras.callbacks.ModelCheckpoint(
-        filepath='best_model.{epoch:02d}-{val_loss:.2f}.h5',
+        filepath='models_regression/best_model.{epoch:02d}-{val_loss:.2f}.h5',
         monitor='val_loss', save_best_only=True),
     keras.callbacks.EarlyStopping(monitor='acc', patience=3)
 ]
-
-# for classification
-# losses = ['categorical_crossentropy', 'sparse_categorical_crossentropy', 'binary_crossentropy']
-# model_m.compile(loss=losses[0],
-#                 optimizer='adam', metrics=['accuracy'])
-
-# for regression
-model_m.add(Dense(1))
-model_m.compile(optimizer=optimizers.Adam(lr=1e-04), loss='mean_squared_error')
 
 # Enable validation to use ModelCheckpoint and EarlyStopping callbacks.
 history = model_m.fit(x_train,
@@ -197,17 +164,21 @@ history = model_m.fit(x_train,
                       validation_split=0.2,
                       verbose=1)
 
+print('history:')
+print(history.history)
+
+plt.figure(figsize=(6, 4))
+plt.plot(history.history['loss'], "b", label="Loss of training data")
+plt.plot(history.history['val_loss'], "r", label="Loss of validation data")
+plt.title('Model Loss')
+plt.ylabel('Loss')
+plt.xlabel('Training Epoch')
+plt.ylim(0)
+plt.legend()
+plt.show()
+
 # print('\ncheck layers')
 print(model_m.layers)
-# 0[<keras.layers.core.Reshape object at 0x10b0f5d50>,
-# 1<keras.layers.convolutional.Conv1D object at 0x11adf7810>,
-# 2<keras.layers.convolutional.Conv1D object at 0x11adf74d0>,
-# 3<keras.layers.pooling.MaxPooling1D object at 0x11adf75d0>,
-# 4<keras.layers.convolutional.Conv1D object at 0x1020bd350>,
-# 5<keras.layers.convolutional.Conv1D object at 0x11adf7f90>,
-# 6<keras.layers.pooling.GlobalAveragePooling1D object at 0x11adf7790>,
-# 7<keras.layers.core.Dropout object at 0x10b27cb10>,
-# 8<keras.layers.core.Dense object at 0x10b27cbd0>]
 
 # print ('\ncheck layer before softmax output')
 layer_models = []
@@ -238,15 +209,8 @@ print('score:')
 print(score)
 
 y_pred_test = model_m.predict(x_test)
-print('\n layer before softmax output:')
-print(layer_models[7].predict(x_test))
+print('predict: ')
+print(y_pred_test.tostring())
 
-# # Take the class with the highest probability from the test predictions
-# max_y_pred_test = np.argmax(y_pred_test, axis=1)
-# # max_y_test = np.argmax(y_test, axis=1)
-# max_y_test = y_test
-#
-# print('confusion matrix:')
-# print(confusion_matrix(max_y_test, max_y_pred_test))
-#
-# # show_confusion_matrix(max_y_test, max_y_pred_test, [0, 1])
+# print('\n layer before softmax output:')
+# print(layer_models[7].predict(x_test))
