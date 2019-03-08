@@ -9,6 +9,7 @@ from __future__ import print_function, division
 
 import pandas as pd
 import numpy as np
+from time import time
 from keras.layers import Convolution1D, Dense, MaxPooling1D, Flatten
 from keras.models import Sequential
 
@@ -48,7 +49,7 @@ def make_timeseries_regressor(window_size, filter_length, nb_input_series=1, nb_
         Flatten(),
         Dense(nb_outputs, activation='linear'),     # For binary classification, change the activation to 'sigmoid'
     ))
-    model.compile(loss='mse', optimizer='adam', metrics=['mae'])
+    model.compile(loss='mae', optimizer='adam', metrics=['mae'])
     # To perform (binary) classification instead:
     # model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['binary_accuracy'])
     return model
@@ -94,29 +95,42 @@ def evaluate_timeseries(timeseries, window_size):
 
     X, y, q = make_timeseries_instances(timeseries, window_size)
     print('\n\nInput features:', X, '\n\nOutput labels:', y, '\n\nQuery vector:', q, sep='\n')
-    test_size = int(0.2 * nb_samples)           # In real life you'd want to use 0.2 - 0.5
+    test_size = int(0.2 * nb_samples)
     X_train, X_test, y_train, y_test = X[:-test_size], X[-test_size:], y[:-test_size], y[-test_size:]
-    model.fit(X_train, y_train, nb_epoch=25, batch_size=2, validation_data=(X_test, y_test))
+    model.fit(X_train, y_train, nb_epoch=500, batch_size=10, validation_data=(X_test, y_test))
 
-    pred = model.predict(X_test)
-    print('\n\nactual', 'predicted', sep='\t')
-    for actual, predicted in zip(y_test, pred.squeeze()):
-        print(actual.squeeze(), predicted, sep='\t')
-    print('next', model.predict(q).squeeze(), sep='\t')
+    # pred = model.predict(X_test)
+    # print('\n\nactual', 'predicted', sep='\t')
+    # for actual, predicted in zip(y_test, pred.squeeze()):
+    #     print(actual.squeeze(), predicted, sep='\t')
+    # print('next', model.predict(q).squeeze(), sep='\t')
+
+    # save y_train, y_pred_train for analytics
+    pd.DataFrame(y).to_csv('y.csv')
+    pd.DataFrame(model.predict(X)).to_csv('y_pred.csv')
 
 
 def main():
-    """Prepare input data, build model, evaluate."""
     np.set_printoptions(threshold=25)
+    start = time()
 
     window_size = 60
 
-    print('\nMultiple-input, multiple-output prediction')
-    df = pd.read_csv('Data/temp_ret_3_30_stocks.csv', index_col=[0])
-    df_stock = df[df['minor'] == 'VMC'][['0', '1', '2']]
-    timeseries = df_stock.values
+    # 3 stocks ret_3
+    # df = pd.read_csv('Data/temp_ret_3_30_stocks.csv', index_col=[0])
+    # df_stock = df[df['minor'] == 'VMC'][['0', '1', '2']]
 
-    evaluate_timeseries(timeseries, window_size)
+    # 1 stocks price, volume
+    # df = pd.read_csv('Data/hist_bar_1min_processed.csv', index_col=[0])
+    # df_stock = df[df['minor'] == 'VMC'][['Adj Close', 'Volume']]
+
+    # 1 stocks price
+    df = pd.read_csv('Data/hist_bar_1min_processed.csv', index_col=[0])
+    df_stock = df[df['minor'] == 'VMC'][['Adj Close']]
+
+    evaluate_timeseries(df_stock.values, window_size)
+
+    print('time cost %0.0f' % (time() - start))
 
 
 if __name__ == '__main__':
