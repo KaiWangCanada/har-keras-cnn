@@ -7,6 +7,7 @@ https://gist.github.com/jkleint/1d878d0401b28b281eb75016ed29f2ee
 
 from __future__ import print_function, division
 
+import pandas as pd
 import numpy as np
 from keras.layers import Convolution1D, Dense, MaxPooling1D, Flatten
 from keras.models import Sequential
@@ -93,7 +94,7 @@ def evaluate_timeseries(timeseries, window_size):
 
     X, y, q = make_timeseries_instances(timeseries, window_size)
     print('\n\nInput features:', X, '\n\nOutput labels:', y, '\n\nQuery vector:', q, sep='\n')
-    test_size = int(0.01 * nb_samples)           # In real life you'd want to use 0.2 - 0.5
+    test_size = int(0.2 * nb_samples)           # In real life you'd want to use 0.2 - 0.5
     X_train, X_test, y_train, y_test = X[:-test_size], X[-test_size:], y[:-test_size], y[-test_size:]
     model.fit(X_train, y_train, nb_epoch=25, batch_size=2, validation_data=(X_test, y_test))
 
@@ -107,15 +108,14 @@ def evaluate_timeseries(timeseries, window_size):
 def main():
     """Prepare input data, build model, evaluate."""
     np.set_printoptions(threshold=25)
-    ts_length = 1000
-    window_size = 50
 
-    print('\nSimple single timeseries vector prediction')
-    # timeseries = np.arange(ts_length)                   # The timeseries f(t) = t
-    # evaluate_timeseries(timeseries, window_size)
+    window_size = 60
 
     print('\nMultiple-input, multiple-output prediction')
-    timeseries = np.array([np.arange(ts_length), -np.arange(ts_length)]).T      # The timeseries f(t) = [t, -t]
+    df = pd.read_csv('Data/temp_ret_3_30_stocks.csv', index_col=[0])
+    df_stock = df[df['minor'] == 'VMC'][['0', '1', '2']]
+    timeseries = df_stock.values
+
     evaluate_timeseries(timeseries, window_size)
 
 
